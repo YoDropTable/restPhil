@@ -1,16 +1,20 @@
 ﻿namespace restPhil
 {
     using Microsoft.AspNetCore.Builder;
+    using Microsoft.AspNetCore.Diagnostics;
     using Microsoft.AspNetCore.Hosting;
+    using Microsoft.AspNetCore.Http;
     using Microsoft.AspNetCore.Mvc.ApiExplorer;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Options;
     using Microsoft.Extensions.PlatformAbstractions;
+    using Newtonsoft.Json;
     using Swashbuckle.AspNetCore.SwaggerGen;
     using System.IO;
     using System.Reflection;
     using static Microsoft.AspNetCore.Mvc.CompatibilityVersion;
+
 
     /// <summary>
     /// Represents the startup process for the application.
@@ -21,9 +25,22 @@
         /// Initializes a new instance of the <see cref="Startup"/> class.
         /// </summary>
         /// <param name="configuration">The current configuration.</param>
-        public Startup(IConfiguration configuration)
+        public Startup(IHostingEnvironment env)
         {
-            Configuration = configuration;
+            var builder = new ConfigurationBuilder()
+                .SetBasePath(env.ContentRootPath)
+                .AddJsonFile("appsettings.json",
+                             optional: false,
+                             reloadOnChange: true)
+                .AddJsonFile("appsettings.Production.json", optional: true, reloadOnChange: true)
+                .AddEnvironmentVariables();
+
+            if (env.IsDevelopment())
+            {
+                builder.AddUserSecrets<Startup>();
+            }
+
+            Configuration = builder.Build();
         }
 
         /// <summary>
@@ -41,11 +58,14 @@
             // the sample application always uses the latest version, but you may want an explicit version such as Version_2_2
             // note: Endpoint Routing is enabled by default; however, if you need legacy style routing via IRouter, change it to false
             services.AddMvc(options => options.EnableEndpointRouting = true).SetCompatibilityVersion(Latest);
+            services.Configure<RestSettings>(Configuration);
             services.AddApiVersioning(
                 options =>
                 {
                     // reporting api versions will return the headers "api-supported-versions" and "api-deprecated-versions"
                     options.ReportApiVersions = true;
+                    options.DefaultApiVersion = new Microsoft.AspNetCore.Mvc.ApiVersion(1, 0);
+                    options.AssumeDefaultVersionWhenUnspecified = true;
                 });
             services.AddVersionedApiExplorer(
                 options =>
@@ -78,7 +98,12 @@
         /// <param name="provider">The API version descriptor provider used to enumerate defined API versions.</param>
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, IApiVersionDescriptionProvider provider)
         {
-            app.UseDeveloperExceptionPage();
+            if(env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+                app.UseStatusCodePagesWithRedirects("/Error/{0}");
+            }
+            
             app.UseMvc();
             app.UseSwagger();
             app.UseSwaggerUI(

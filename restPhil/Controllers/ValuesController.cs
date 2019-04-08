@@ -3,25 +3,35 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-
+using Microsoft.Extensions.Options;
 
 namespace restPhil.Controllers
 {
+
+
     /// <summary>
     /// Values controller.
     /// </summary>
     [ApiVersion("1")]
     [ApiVersion("2")]
+    [Route("api/[controller]")]
     [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
     public class ValuesController : ControllerBase
     {
+
+        private readonly RestSettings _settings;
+        public ValuesController(IOptions<RestSettings> settingsOptions)
+        {
+            _settings = settingsOptions.Value;
+        }
+
         // GET api/values
         [HttpGet]
         [MapToApiVersion("1")]
         public ActionResult<IEnumerable<string>> Get()
         {
-            return new string[] { "value1", "value2" };
+            return new string[] {"values from 1","from 2"};
         }
 
         // GET api/values
@@ -40,6 +50,10 @@ namespace restPhil.Controllers
         }
 
         // POST api/values
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="value"></param>
         [HttpPost]
         [MapToApiVersion("1")]
         public void Post([FromBody] string value)
